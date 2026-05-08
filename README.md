@@ -75,6 +75,31 @@ The Model Armor service requires the following environment variables:
 - `GOOGLE_CLOUD_LOCATION`: The region where Model Armor is configured (e.g., `us-central1`).
 - `GOOGLE_CLOUD_TEMPLATE_ID`: The ID of the Model Armor security template to use.
 
+The template was configured in the Model Armor GUI section in Google Cloud Console.
+Someone with the model armor admin role must create the template. To change floor settings, model amor admin and 
+model armor floor setting update roles are required.
+
+The template being used in this PoC is configured with the following settings:
+
+| Detections                               | Setting |
+|------------------------------------------|---------|
+| Content filter                           | Enabled |
+| Malicious URL detection                  | Enabled |
+| Prompt injection and jailbreak detection | Enabled |
+| Confidence level                         | High    |
+| Sensitive data protection                | Enabled |
+| Detection type                           | Basic   |
+
+
+**Responsible AI:**
+
+| Content filter                      | Confidence level |
+|-------------------------------------|------------------|
+| Hate speech	                        | Low and above    |
+| Dangerous	                          | High             |
+| Sexually explicit (text and image)	 | Low and above    |
+| Harassment	                         | High             |
+
 #### Integration
 The agent is configured in `agent.py` to use these callbacks:
 ```python
@@ -85,3 +110,27 @@ root_agent = LlmAgent(
 )
 ```
 
+#### Testing Model Armor
+
+Aside from the unit and integration tests, manual testing was performed to verify the functionality of the 
+Model Armor service.
+
+* asking to check an order status with valid order id and then including harmful content
+* asking to escalate to human support with aggressive speech
+* asking for ways to harm someone included in a legitimate request
+
+Currently, Model Armor evaluation can be performed with `security_v1` tag in the json configuration,
+but it is not yet supported in all regions.
+
+
+## Conclusion
+
+Model Armor can be used to protect the agent's input and output from harmful content.
+However, it is also an AI tool, so it can be flaky and the results may not always be accurate.
+Make sure to test the agent thoroughly and play around with the settings to find the best balance.
+The agent instructions can be also tweaked to ignore or override some of the safety checks.
+Sometimes just being straightforward is enough to trigger the safety filters, like "check my order ABC"
+could be flagged as harassment.
+Each RAI filter has different responses, so for a high level response, each filter should be handled separately.
+
+If dealing with sensitive data, SDP filtering can be used to mask PII in input and output levels.
