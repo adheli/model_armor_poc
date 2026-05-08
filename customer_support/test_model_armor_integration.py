@@ -32,3 +32,11 @@ class TestModelArmorIntegration:
             assert result is None or isinstance(result, str)
         except Exception as e:
             pytest.fail(f"sanitize_output raised an exception: {e}")
+
+    def test_check_for_sanitizing_flag_real(self):
+        # This test will attempt to call the real Model Armor API
+        try:
+            response = self.service.check_for_sanitizing_flag("This is a normal response.")
+            assert hasattr(response, "sanitization_result")
+        except Exception as e:
+            pytest.fail(f"check_for_sanitizing_flag raised an exception: {e}")

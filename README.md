@@ -45,6 +45,12 @@ Start the agent with the following command:
 2. Send a harmful request.
 3. Ask agent means to harm someone.
 
+* Execution:
+
+`uv run adk eval customer_support customer_support/generated.evalset.json --config_file_path=customer_support/test_config.json --print_detailed_results`
+
+`uv run adk eval customer_support customer_support/eval_set_v2.evalset.json --config_file_path=customer_support/test_config.json --print_detailed_results`
+
 #### References
 - [Why Evaluate Agents](https://adk.dev/evaluate/)
 - [Build intelligent agents with ADK](https://www.skills.google/course_templates/1382)

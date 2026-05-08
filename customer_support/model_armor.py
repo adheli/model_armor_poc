@@ -2,7 +2,8 @@ from typing import MutableMapping
 
 from google.api_core.client_options import ClientOptions
 from google.cloud import modelarmor_v1
-from google.cloud.modelarmor_v1 import FilterMatchState, SdpFilterResult, FilterResult, FilterExecutionState
+from google.cloud.modelarmor_v1 import FilterMatchState, SdpFilterResult, FilterResult, FilterExecutionState, \
+    SanitizeModelResponseResponse
 
 
 class ModelArmorService:
@@ -29,10 +30,25 @@ class ModelArmorService:
 
         if response.sanitization_result:
             if response.sanitization_result.filter_match_state == FilterMatchState.MATCH_FOUND:
-                raise ValueError(f"Input blocked by Model Armor.")
+                raise ValueError("Input blocked by Model Armor.")
 
     def sanitize_output(self, text: str):
         """Sanitizes the model response text using Model Armor."""
+        response = self.check_for_sanitizing_flag(text)
+
+        if response.sanitization_result:
+            if response.sanitization_result.filter_match_state == FilterMatchState.MATCH_FOUND:
+                redacted_text = sanitize_sensitive_data(response)
+                if redacted_text:
+                    return redacted_text
+                else:
+                    errors = process_filter_results(response.sanitization_result.filter_results)
+                    raise ValueError(f"Model response blocked by Model Armor. Errors: {errors}")
+
+        print("No issues found.")
+        return None
+
+    def check_for_sanitizing_flag(self, text: str) -> SanitizeModelResponseResponse:
         data_item = {"text": text}
         model_response_data = modelarmor_v1.DataItem(data_item)
 
@@ -40,17 +56,19 @@ class ModelArmorService:
         request = modelarmor_v1.SanitizeModelResponseRequest(request_item)
 
         response = self.client.sanitize_model_response(request=request)
+        return response
 
-        if response.sanitization_result:
-            if response.sanitization_result.filter_match_state == FilterMatchState.MATCH_FOUND:
-                errors, redacted_text = process_filter_results(response.sanitization_result.filter_results)
-                print(f"Model response filtered - Redacted text: {redacted_text}")
-                if redacted_text:
-                    return redacted_text
-                elif errors:
-                    raise ValueError(f"Model response blocked by Model Armor. Errors: {errors}")
 
-        return None
+def sanitize_sensitive_data(response: SanitizeModelResponseResponse):
+    """Sanitizes sensitive data using Model Armor."""
+    if response.sanitization_result.filter_results:
+        sdp_filter_result_item = response.sanitization_result.filter_results.get("sdpFilterResult")
+        if sdp_filter_result_item:
+            errors, redacted_text = process_sdp_filter_results(sdp_filter_result_item.sdp_filter_result)
+            print(f"Sensitive data filtered. Issues found: {errors}")
+            return redacted_text
+
+    return None
 
 
 def process_filter_results(filter_result: MutableMapping[str, FilterResult]):
@@ -60,10 +78,9 @@ def process_filter_results(filter_result: MutableMapping[str, FilterResult]):
         filter_result: A mapping of filter names to their results.
 
     Returns:
-        tuple: A list of filter errors and the redacted text.
+        list: A list of filter errors.
     """
     filter_errors = []
-    redacted_text = ""
 
     for _, filter_item in filter_result.items():
         if (filter_item.csam_filter_filter_result and
@@ -82,13 +99,7 @@ def process_filter_results(filter_result: MutableMapping[str, FilterResult]):
         if filter_item.virus_scan_filter_result and filter_item.virus_scan_filter_result.match_state == FilterMatchState.MATCH_FOUND:
             filter_errors.append("Message might be infected with a virus.")
 
-        if filter_item.sdp_filter_result:
-            sdp_result = process_sdp_filter_results(filter_item.sdp_filter_result)
-            if sdp_result:
-                filter_errors.append(sdp_result.get("error_messages", ""))
-                redacted_text = sdp_result.get("deidentify_result", "")
-
-    return filter_errors, redacted_text
+    return filter_errors
 
 
 def process_sdp_filter_results(sdp_result: SdpFilterResult):
@@ -98,16 +109,18 @@ def process_sdp_filter_results(sdp_result: SdpFilterResult):
         sdp_result: The SDP filter result from Model Armor.
 
     Returns:
-        dict: A dictionary containing error messages and de-identified result.
+        tuple: A tuple containing a list of error messages and the de-identified result.
     """
-    sdp_dict = {}
+    errors=[]
+    deidentify_result = None
 
     if sdp_result:
         if sdp_result.inspect_result.match_state == FilterMatchState.MATCH_FOUND:
-            sdp_dict["error_messages"] = sdp_result.inspect_result.message_items
+            print(f"Sensitive data found")
+            errors = sdp_result.inspect_result.message_items
 
         if (sdp_result.deidentify_result
                 and sdp_result.deidentify_result.execution_state == FilterExecutionState.EXECUTION_SUCCESS):
-            sdp_dict["deidentify_result"] = sdp_result.deidentify_result.data
+            deidentify_result = sdp_result.deidentify_result.data
 
-    return sdp_dict
+    return errors, deidentify_result

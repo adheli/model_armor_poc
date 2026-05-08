@@ -1,10 +1,12 @@
 import os
-from typing import Optional
+from copy import deepcopy
+from typing import Optional, Dict, Any
 
 import google.auth
 from dotenv import load_dotenv
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.models import LlmRequest, LlmResponse
+from google.adk.tools import BaseTool, ToolContext
 from google.genai import types
 from .model_armor import ModelArmorService
 
@@ -44,10 +46,9 @@ def before_model_callback_handler(callback_context: CallbackContext, llm_request
                     return None
 
                 except (ValueError, TypeError) as e:
-                    print(f"Error sanitizing input: {e}")
                     return LlmResponse(content=types.Content(
                         role="model",
-                        parts=[types.Part(text="Your request cannot be processed." + e.__str__())],
+                        parts=[types.Part(text="Your request cannot be processed. " + e.__str__())],
                     ))
     return None
 
@@ -82,6 +83,6 @@ def after_model_callback_handler(callback_context: CallbackContext, llm_response
                 print(f"Error sanitizing output: {e}")
                 return LlmResponse(content=types.Content(
                     role="model",
-                    parts=[types.Part(text="Model response was blocked." + e.__str__())],
+                    parts=[types.Part(text="Model response was blocked. " + e.__str__())],
                 ))
     return None

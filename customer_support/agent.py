@@ -180,7 +180,7 @@ For 'cannot_refund' errors:
 
 ## When to Escalate:
 Use escalate_to_supervisor when:
-    - Customer already checked an order (use the {order_id} output key)
+    - Customer already checked an order
     - Customer is frustrated or angry and requests supervisor
     - Issue cannot be resolved with available tools
     - Customer requests policy exception
@@ -202,5 +202,5 @@ After escalating:
     tools=[check_order_status, process_refund, escalate_to_supervisor],
     output_key="order_id",
     before_model_callback=before_model_callback_handler,
-    after_model_callback=after_model_callback_handler
+    after_model_callback=after_model_callback_handler,
 )

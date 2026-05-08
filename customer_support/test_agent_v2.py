@@ -15,7 +15,7 @@ async def test_customer_support_agent():
     the AgentEvaluator.
     """
     # Path to the evaluation set
-    file_name="generated.evalset.json"
+    file_name="eval_set_v2.evalset.json"
     eval_set_path = os.path.dirname(__file__) + "/" + file_name
     
     # Run evaluation
